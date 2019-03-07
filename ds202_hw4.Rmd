@@ -1,0 +1,119 @@
+---
+title: "ds202_hw4"
+author: "Audrey Comer"
+date: "3/5/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+?ChickWeight
+library(dplyr)
+```
+
+1. Get a frequency breakdown of the number of chicks, their average weight and the standard deviation of the weights in each of the diets at the start of the study. Store the resulting data frame in a variable named weight0 and print.
+```{r}
+weight0 <- filter(ChickWeight,Time==0) %>% 
+  group_by(Diet) %>% 
+  summarize( 
+            n_chicks=n(),
+            mean_weight = mean(weight),
+            sd_weight = sd(weight))
+weight0
+```
+
+2. Each chick should have twelve weight measurements. Use the dplyr package to identify how many measurements are there for each chick. Extract a subset of the data for all chicks with complete information, name the data set complete, and print the first 3 rows. (Hint: you might want to use mutate to introduce a helper variable consisting of the number of observations)
+
+There are 12 measurements for all chicks except 8, 15, 16, 18, and 44.
+```{r}
+n1 <- ChickWeight %>% group_by(Chick) %>%
+  summarise(n=n()) %>%
+  arrange(n, desc(n)) %>%
+  filter(n==12)
+n2 <- n1$Chick
+n2
+#if chick shows up in n2 (contains 12 measurements), return it in complete
+complete <- ChickWeight %>%
+  filter(Chick %in% n2)
+head(complete,3)
+```
+
+3. In the complete data set introduce a new variable that measures the current weight difference compared to day 0. Name this variable  weightgain and print the first 3 rows of the new data frame.
+
+```{r}
+dat <- complete %>% 
+  group_by(Chick) %>% 
+  mutate(weight_0 = weight[Time == 0])
+
+complete <- complete %>% 
+  mutate(weightgain = dat$weight-dat$weight_0)
+head(complete,3)
+```
+
+4. Use {ggplot2} to create side-by-side boxplots of weightgain by Diet for day 21. Describe the relationship in 2-3 sentences. Change the order of the categories in the Diet variable such that the boxplots are ordered by median weightgain, and the lower limit of the y axis should be 0.
+```{r}
+library(ggplot2)
+complete %>% 
+  filter(Time==21) %>%
+  ggplot(aes(x=reorder(Diet,weightgain,FUN=median), y=weightgain)) + geom_boxplot() + xlab('Diet Number') +ylab('Weight Gained') + ylim(c(0,350))
+```  
+
+5. Answer the following question using numerical and graphical summary: Which chick gained the most weight and which gained the least weight? What diets were they on?
+Chick 24 gained the least; it was on diet 2. Chick 35 gained the most; it was on diet 3.
+```{r}
+d5 <-complete %>%
+  arrange(desc(weightgain)) %>%
+  filter(Time == 21) %>%
+  filter(weightgain==max(weightgain) | weightgain==min(weightgain))
+#d5 %>%
+#  ggplot(aes(x=Chick,y=weightgain)) + geom_bar()
+```
+
+6. For the chicks with the least and the most weight at time 0, plot their growth trajectories over time. 
+5 pts of extra credit: Add to the plot the average growth trajectory for all chicks (calculated as the mean weight for each chick at each time). How do the trajectories compare?
+
+```{r}
+time0<-complete %>%
+  filter(Time==0)
+df.min<-time0 %>%
+  filter(weight==min(weight))
+v.min<-df.min$Chick
+df.max<-time0 %>%
+  filter(weight ==max(weight))
+v.max<-df.max$Chick
+df.other<- time0 %>%
+  filter(weight != max(weight) & weight != min(weight))
+v.other<-df.other$Chick
+
+dfplot <- complete
+dfplot$Color <- ifelse (complete$Chick %in% v.max, dfplot$Color <-"highest start weight",
+        ifelse(complete$Chick %in% v.min,
+        dfplot$Color <- "lowest start weight",
+        dfplot$Color <- "all others"
+        ))
+dfplot$Color<- factor(dfplot$Color, levels=c("highest start weight", "lowest start weight", "all others"))
+dfplot
+dfplot %>%
+  filter(Color!="all others") %>%
+  ggplot(aes(x=Time, y=weight, color=Color, group=Chick)) + geom_point() + geom_line() + scale_colour_manual(values=c("red", "blue")) + ggtitle('Increase in Weight over Time') + ylim(0,330)
+```
+
+
+7. What else do you find interesting in the dataset? Show your exploratory analysis.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
